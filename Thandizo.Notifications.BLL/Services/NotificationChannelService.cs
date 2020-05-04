@@ -124,6 +124,16 @@ namespace Thandizo.Notifications.BLL.Services
                 };
             }
 
+            isFound = await _context.Subscribers.AnyAsync(x => x.ChannelId.Equals(channelId));
+            if (isFound)
+            {
+                return new OutputResponse
+                {
+                    IsErrorOccured = true,
+                    Message = "The specified notification channel is allocated to a subscriber, deletion denied"
+                };
+            }
+
             var notificationChannel = await _context.NotificationChannels.FirstOrDefaultAsync(x => x.ChannelId.Equals(channelId));
 
             if (notificationChannel == null)
