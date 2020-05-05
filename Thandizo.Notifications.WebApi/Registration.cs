@@ -13,6 +13,8 @@ namespace Thandizo.Notifications.WebApi
         public static IServiceCollection AddDomainServices(this IServiceCollection services)
         {
             services.AddScoped<INotificationChannelService, NotificationChannelService>();
+            services.AddScoped<IBulkNotificationLogService, BulkNotificationLogService>();
+            services.AddScoped<IScheduledNotificationLogService, ScheduledNotificationLogService>();
             services.AddScoped<IBulkNotificationService, BulkNotificationService>();
             services.AddScoped<IScheduledNotificationService, ScheduledNotificationService>();
             services.AddScoped<ISubscriberService, SubscriberService>();
