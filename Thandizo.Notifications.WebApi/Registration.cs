@@ -1,8 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Thandizo.Notifications.BLL.Services;
 
 namespace Thandizo.Notifications.WebApi
@@ -17,6 +13,7 @@ namespace Thandizo.Notifications.WebApi
         public static IServiceCollection AddDomainServices(this IServiceCollection services)
         {
             services.AddScoped<INotificationChannelService, NotificationChannelService>();
+            services.AddScoped<IBulkNotificationService, BulkNotificationService>();
             services.AddScoped<IScheduledNotificationService, ScheduledNotificationService>();
             services.AddScoped<ISubscriberService, SubscriberService>();
             services.AddScoped<IScheduledNotificationEscalationRuleService, ScheduledNotificationEscalationRuleService>();
