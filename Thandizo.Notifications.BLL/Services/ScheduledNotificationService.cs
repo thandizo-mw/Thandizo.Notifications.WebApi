@@ -44,7 +44,7 @@ namespace Thandizo.Notifications.BLL.Services
                     DateCreated = x.DateCreated,
                     DateModified = x.DateModified,
                     ModifiedBy = x.ModifiedBy
-                }).ToListAsync();
+                }).FirstOrDefaultAsync();
 
             return new OutputResponse
             {
