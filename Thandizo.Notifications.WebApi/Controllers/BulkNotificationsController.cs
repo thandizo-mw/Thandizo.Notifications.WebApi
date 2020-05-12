@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
 using Thandizo.ApiExtensions.Filters;
 using Thandizo.ApiExtensions.General;
 using Thandizo.DataModels.Notifications;
+using Thandizo.DataModels.Notifications.Requests;
 using Thandizo.Notifications.BLL.Services;
 
 namespace Thandizo.Notifications.WebApi.Controllers
@@ -11,11 +13,19 @@ namespace Thandizo.Notifications.WebApi.Controllers
     [ApiController]
     public class BulkNotificationsController : ControllerBase
     {
-        IBulkNotificationService _service;
+        private readonly IBulkNotificationService _service;
+        private readonly IConfiguration _configuration;
 
-        public BulkNotificationsController(IBulkNotificationService service)
+        public string SmsQueueAddress =>
+           string.Concat(_configuration["RabbitMQHost"], "/", _configuration["SmsQueue"]);
+
+        public string EmailQueueAddress =>
+            string.Concat(_configuration["RabbitMQHost"], "/", _configuration["EmailQueue"]);
+
+        public BulkNotificationsController(IBulkNotificationService service, IConfiguration configuration)
         {
             _service = service;
+            _configuration = configuration;
         }
 
         [HttpGet("GetById")]
@@ -50,9 +60,9 @@ namespace Thandizo.Notifications.WebApi.Controllers
         [ValidateModelState]
         [CatchException(MessageHelper.AddNewError)]
         [ValidateModelState]
-        public async Task<IActionResult> Add([FromBody]BulkNotificationDTO bulkNotification)
+        public async Task<IActionResult> Add([FromBody]BulkNotificationRequest bulkNotificationRequest)
         {
-            var outputHandler = await _service.Add(bulkNotification);
+            var outputHandler = await _service.Add(bulkNotificationRequest, SmsQueueAddress);
             if (outputHandler.IsErrorOccured)
             {
                 return BadRequest(outputHandler.Message);
