@@ -36,8 +36,7 @@ namespace Thandizo.Notifications.BLL.Services
                     Interval = x.Interval,
                     IsActive = x.IsActive,
                     NotificationId = x.NotificationId,
-                    PatientId = x.PatientId,
-                    PatientName = $"{x.Patient.FirstName} {x.Patient.OtherNames} {x.Patient.LastName}",
+                    Recipients = x.Recipients,
                     RuleId = x.RuleId,
                     RuleName = x.Rule.Name,
                     CreatedBy = x.CreatedBy,
@@ -67,8 +66,7 @@ namespace Thandizo.Notifications.BLL.Services
                    Interval = x.Interval,
                    IsActive = x.IsActive,
                    NotificationId = x.NotificationId,
-                   PatientId = x.PatientId,
-                   PatientName = $"{x.Patient.FirstName} {x.Patient.OtherNames} {x.Patient.LastName}",
+                   Recipients = x.Recipients,
                    RuleId = x.RuleId,
                    RuleName = x.Rule.Name,
                    CreatedBy = x.CreatedBy,
@@ -86,9 +84,19 @@ namespace Thandizo.Notifications.BLL.Services
 
         public async Task<OutputResponse> Add(ScheduledNotificationDTO scheduledNotification)
         {
+            var patients = await _context.Patients.Select(x => x.PhoneNumber).ToArrayAsync() as string[];
 
+            if(patients is null)
+            {
+                return new OutputResponse
+                {
+                    IsErrorOccured = true,
+                    Message = "An error occured while adding recipients"
+                };
+            }
             var mappedScheduledNotification = new AutoMapperHelper<ScheduledNotificationDTO, ScheduledNotifications>().MapToObject(scheduledNotification);
             mappedScheduledNotification.RowAction = "I";
+            mappedScheduledNotification.Recipients = patients;
             mappedScheduledNotification.DateCreated = DateTime.UtcNow.AddHours(2);
 
             await _context.ScheduledNotifications.AddAsync(mappedScheduledNotification);
@@ -119,7 +127,7 @@ namespace Thandizo.Notifications.BLL.Services
             scheduledNotificationToUpdate.Interval = scheduledNotification.Interval;
             scheduledNotificationToUpdate.IsActive = scheduledNotification.IsActive;
             scheduledNotificationToUpdate.Message = scheduledNotification.Message;
-            scheduledNotificationToUpdate.PatientId = scheduledNotification.PatientId;
+            scheduledNotificationToUpdate.Recipients = scheduledNotification.Recipients;
             scheduledNotificationToUpdate.TemplateId = scheduledNotification.TemplateId;
             scheduledNotificationToUpdate.RuleId = scheduledNotification.RuleId;
             scheduledNotificationToUpdate.StartDate = scheduledNotification.StartDate;
