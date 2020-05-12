@@ -34,9 +34,22 @@ namespace Thandizo.Notifications.BLL.Services
             };
         }
 
-        public async Task<OutputResponse> Get()
+        public async Task<OutputResponse> GetByChannel(int channelId)
         {
-            var subscribers = await _context.Subscribers.OrderBy(x => x.Channel.ChannelName).ToListAsync();
+            var subscribers = await _context.Subscribers.Where(x => x.ChannelId.Equals(channelId)).OrderBy(x => x.PhoneNumber).ToListAsync();
+
+            var mappedSubscribers = new AutoMapperHelper<Subscribers, SubscriberDTO>().MapToList(subscribers);
+
+            return new OutputResponse
+            {
+                IsErrorOccured = false,
+                Result = mappedSubscribers
+            };
+        }
+
+        public async Task<OutputResponse> GetBySubscriber(string phoneNumber)
+        {
+            var subscribers = await _context.Subscribers.Where(x => x.PhoneNumber.Equals(phoneNumber)).ToListAsync();
 
             var mappedSubscribers = new AutoMapperHelper<Subscribers, SubscriberDTO>().MapToList(subscribers);
 
@@ -49,7 +62,7 @@ namespace Thandizo.Notifications.BLL.Services
 
         public async Task<OutputResponse> Add(SubscriberDTO subscriber)
         {
-            var isFound = await _context.Subscribers.AnyAsync(x => x.PhoneNumber.ToLower() == subscriber.PhoneNumber.ToLower());
+            /*var isFound = await _context.Subscribers.AnyAsync(x => x.PhoneNumber.ToLower() == subscriber.PhoneNumber.ToLower());
             if (isFound)
             {
                 return new OutputResponse
@@ -57,7 +70,7 @@ namespace Thandizo.Notifications.BLL.Services
                     IsErrorOccured = true,
                     Message = "Subscriber phone number already exist, duplicates not allowed"
                 };
-            }
+            }*/
 
             var mappedSubscriber = new AutoMapperHelper<SubscriberDTO, Subscribers>().MapToObject(subscriber);
             mappedSubscriber.RowAction = "I";
