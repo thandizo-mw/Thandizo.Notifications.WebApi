@@ -1,21 +1,27 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using MassTransit;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Transactions;
 using Thandizo.ApiExtensions.DataMapping;
 using Thandizo.ApiExtensions.General;
 using Thandizo.DAL.Models;
+using Thandizo.DataModels.Contracts;
 using Thandizo.DataModels.General;
+using Thandizo.DataModels.Messaging;
 using Thandizo.DataModels.Notifications;
+using Thandizo.DataModels.Notifications.Requests;
 using Thandizo.DataModels.Notifications.Responses;
 
 namespace Thandizo.Notifications.BLL.Services
 {
     public class BulkNotificationService : IBulkNotificationService
     {
-        private thandizoContext _context;
+        private readonly thandizoContext _context;
+        private readonly IBusControl _bus;
 
         public BulkNotificationService(thandizoContext context)
         {
@@ -68,15 +74,62 @@ namespace Thandizo.Notifications.BLL.Services
             };
         }
 
-        public async Task<OutputResponse> Add(BulkNotificationDTO bulkNotification)
+        public async Task<OutputResponse> Add(BulkNotificationRequest bulkNotificationRequest, string smsQueueAddress)
         {
+            using (TransactionScope scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            {
+                var channel = await _context.NotificationChannels.FirstOrDefaultAsync(x => x.ChannelId.Equals(bulkNotificationRequest.ChannelId));
 
-            var mappedBulkNotification = new AutoMapperHelper<BulkNotificationDTO, BulkNotifications>().MapToObject(bulkNotification);
-            mappedBulkNotification.RowAction = "I";
-            mappedBulkNotification.DateCreated = DateTime.UtcNow.AddHours(2);
+                var phoneNumbers = await _context.Subscribers.Where(x => x.ChannelId.Equals(bulkNotificationRequest.ChannelId)).
+                        Select(x => x.PhoneNumber).ToListAsync();
 
-            await _context.BulkNotifications.AddAsync(mappedBulkNotification);
-            await _context.SaveChangesAsync();
+                if (bulkNotificationRequest.SendNow && channel.ChannelName.Equals("SMS"))
+                {
+                    var smsEndpoint = await _bus.GetSendEndpoint(new Uri(smsQueueAddress));
+
+                    if (phoneNumbers.Any())
+                    {
+                        await smsEndpoint.Send(new MessageModelRequest(new MessageModel
+                        {
+                            SourceAddress = "Thandizo",
+                            DestinationRecipients = phoneNumbers,
+                            MessageBody = bulkNotificationRequest.Message
+                        }));
+                    }
+                }
+
+                BulkNotificationDTO bulkNotification = bulkNotificationRequest;
+
+                var mappedBulkNotification = new AutoMapperHelper<BulkNotificationDTO, BulkNotifications>().MapToObject(bulkNotification);
+                mappedBulkNotification.RowAction = "I";
+                mappedBulkNotification.DateCreated = DateTime.UtcNow.AddHours(2);
+
+                await _context.BulkNotifications.AddAsync(mappedBulkNotification);
+                await _context.SaveChangesAsync();
+
+                var bulkNotificationLogs = new List<BulkNotificationLog>();
+
+                foreach (string phoneNumber in phoneNumbers)
+                {
+                    var bulkNotificationLog = new BulkNotificationLogDTO
+                    {
+                        CreatedBy = "SYS",
+                        DateCreated = DateTime.UtcNow.AddHours(2),
+                        NotificationId = mappedBulkNotification.NotificationId,
+                        PhoneNumber = phoneNumber,
+                        Status = "S"
+                    };
+
+                    var mappedBulkNotificationLog = new AutoMapperHelper<BulkNotificationLogDTO, BulkNotificationLog>().MapToObject(bulkNotificationLog);
+                    mappedBulkNotificationLog.DateCreated = DateTime.UtcNow.AddHours(2);
+
+                    bulkNotificationLogs.Add(mappedBulkNotificationLog);
+                }
+                await _context.BulkNotificationLog.AddRangeAsync(bulkNotificationLogs);
+                await _context.SaveChangesAsync();
+
+                scope.Complete();
+            }
 
             return new OutputResponse
             {
