@@ -8,9 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MassTransit.RabbitMQ" Version="6.2.5" />
     <PackageReference Include="Thandizo.ApiExtensions" Version="1.0.0.5" />
-    <PackageReference Include="Thandizo.DAL" Version="1.0.1.6" />
-    <PackageReference Include="Thandizo.DataModels" Version="1.0.5.8" />
+    <PackageReference Include="Thandizo.DAL" Version="1.0.1.7" />
+    <PackageReference Include="Thandizo.DataModels" Version="1.0.7.2" />
   </ItemGroup>
 
 </Project>
