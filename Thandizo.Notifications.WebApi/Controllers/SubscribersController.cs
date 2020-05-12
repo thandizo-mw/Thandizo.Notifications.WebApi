@@ -32,11 +32,26 @@ namespace Thandizo.Notifications.WebApi.Controllers
             return Ok(response.Result);
         }
 
-        [HttpGet("GetAll")]
+        [HttpGet("GetByChannel")]
         [CatchException(MessageHelper.GetListError)]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetByChannel(int channelId)
         {
-            var response = await _service.Get();
+            var response = await _service.GetByChannel(channelId);
+
+            if (response.IsErrorOccured)
+            {
+                return BadRequest(response.Message);
+            }
+
+            return Ok(response.Result);
+        }
+        
+
+        [HttpGet("GetBySubscriber")]
+        [CatchException(MessageHelper.GetListError)]
+        public async Task<IActionResult> GetBySubscriber(string phoneNumber)
+        {
+            var response = await _service.GetBySubscriber(phoneNumber);
 
             if (response.IsErrorOccured)
             {
@@ -59,20 +74,6 @@ namespace Thandizo.Notifications.WebApi.Controllers
             }
 
             return Created("", outputHandler.Message);
-        }
-
-        [HttpPut("Update")]
-        [ValidateModelState]
-        [CatchException(MessageHelper.UpdateError)]
-        public async Task<IActionResult> Update([FromBody]SubscriberDTO subscriber)
-        {
-            var outputHandler = await _service.Update(subscriber);
-            if (outputHandler.IsErrorOccured)
-            {
-                return BadRequest(outputHandler.Message);
-            }
-
-            return Ok(outputHandler.Message);
         }
 
         [HttpDelete("Delete")]
