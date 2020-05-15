@@ -97,7 +97,7 @@ namespace Thandizo.Notifications.BLL.Services
             var mappedScheduledNotification = new AutoMapperHelper<ScheduledNotificationDTO, ScheduledNotifications>().MapToObject(scheduledNotification);
             mappedScheduledNotification.RowAction = "I";
             mappedScheduledNotification.Recipients = patients;
-            mappedScheduledNotification.DateCreated = DateTime.UtcNow.AddHours(2);
+            mappedScheduledNotification.DateCreated = DateTime.UtcNow;
 
             await _context.ScheduledNotifications.AddAsync(mappedScheduledNotification);
             await _context.SaveChangesAsync();
@@ -133,7 +133,7 @@ namespace Thandizo.Notifications.BLL.Services
             scheduledNotificationToUpdate.StartDate = scheduledNotification.StartDate;
             scheduledNotificationToUpdate.RowAction = "U";
             scheduledNotificationToUpdate.ModifiedBy = scheduledNotification.CreatedBy;
-            scheduledNotificationToUpdate.DateModified = DateTime.UtcNow.AddHours(2);
+            scheduledNotificationToUpdate.DateModified = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 

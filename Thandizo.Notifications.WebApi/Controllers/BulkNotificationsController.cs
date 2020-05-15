@@ -62,7 +62,7 @@ namespace Thandizo.Notifications.WebApi.Controllers
         [ValidateModelState]
         public async Task<IActionResult> Add([FromBody]BulkNotificationRequest bulkNotificationRequest)
         {
-            var outputHandler = await _service.Add(bulkNotificationRequest, SmsQueueAddress);
+            var outputHandler = await _service.Add(bulkNotificationRequest, SmsQueueAddress, EmailQueueAddress);
             if (outputHandler.IsErrorOccured)
             {
                 return BadRequest(outputHandler.Message);

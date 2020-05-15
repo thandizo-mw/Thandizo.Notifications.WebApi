@@ -73,8 +73,6 @@ namespace Thandizo.Notifications.BLL.Services
             }*/
 
             var mappedSubscriber = new AutoMapperHelper<SubscriberDTO, Subscribers>().MapToObject(subscriber);
-            mappedSubscriber.RowAction = "I";
-            mappedSubscriber.DateCreated = DateTime.UtcNow.AddHours(2);
 
             await _context.Subscribers.AddAsync(mappedSubscriber);
             await _context.SaveChangesAsync();
@@ -110,12 +108,9 @@ namespace Thandizo.Notifications.BLL.Services
             }
 
             //update details
+            subscriberToUpdate.RecipientAddress = subscriber.RecipientAddress;
             subscriberToUpdate.PhoneNumber = subscriber.PhoneNumber;
-            subscriberToUpdate.IsRegisteredPatient = subscriber.IsRegisteredPatient;
             subscriberToUpdate.ChannelId = subscriber.ChannelId;
-            subscriberToUpdate.RowAction = "U";
-            subscriberToUpdate.ModifiedBy = subscriber.CreatedBy;
-            subscriberToUpdate.DateModified = DateTime.UtcNow.AddHours(2);
 
             await _context.SaveChangesAsync();
 

@@ -61,7 +61,7 @@ namespace Thandizo.Notifications.BLL.Services
 
             var mappedNotificationChannel = new AutoMapperHelper<NotificationChannelDTO, NotificationChannels>().MapToObject(notificationChannel);
             mappedNotificationChannel.RowAction = "I";
-            mappedNotificationChannel.DateCreated = DateTime.UtcNow.AddHours(2);
+            mappedNotificationChannel.DateCreated = DateTime.UtcNow;
 
             await _context.NotificationChannels.AddAsync(mappedNotificationChannel);
             await _context.SaveChangesAsync();
@@ -100,7 +100,7 @@ namespace Thandizo.Notifications.BLL.Services
             notificationChannelToUpdate.ChannelName = notificationChannel.ChannelName;
             notificationChannelToUpdate.RowAction = "U";
             notificationChannelToUpdate.ModifiedBy = notificationChannel.CreatedBy;
-            notificationChannelToUpdate.DateModified = DateTime.UtcNow.AddHours(2);
+            notificationChannelToUpdate.DateModified = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 

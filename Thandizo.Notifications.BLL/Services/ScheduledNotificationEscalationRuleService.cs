@@ -61,7 +61,7 @@ namespace Thandizo.Notifications.BLL.Services
 
             var mappedScheduledNotificationEscalationRule = new AutoMapperHelper<ScheduledNotificationEscalationRuleDTO, ScheduledNotificationEscalationRules>().MapToObject(notificationEscalationRule);
             mappedScheduledNotificationEscalationRule.RowAction = "I";
-            mappedScheduledNotificationEscalationRule.DateCreated = DateTime.UtcNow.AddHours(2);
+            mappedScheduledNotificationEscalationRule.DateCreated = DateTime.UtcNow;
 
             await _context.ScheduledNotificationEscalationRules.AddAsync(mappedScheduledNotificationEscalationRule);
             await _context.SaveChangesAsync();
@@ -102,7 +102,7 @@ namespace Thandizo.Notifications.BLL.Services
             notificationEscalationRuleToUpdate.Message = notificationEscalationRule.Message;
             notificationEscalationRuleToUpdate.RowAction = "U";
             notificationEscalationRuleToUpdate.ModifiedBy = notificationEscalationRule.CreatedBy;
-            notificationEscalationRuleToUpdate.DateModified = DateTime.UtcNow.AddHours(2);
+            notificationEscalationRuleToUpdate.DateModified = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
@@ -10,8 +10,8 @@
   <ItemGroup>
     <PackageReference Include="MassTransit.RabbitMQ" Version="6.2.5" />
     <PackageReference Include="Thandizo.ApiExtensions" Version="1.0.0.5" />
-    <PackageReference Include="Thandizo.DAL" Version="1.0.1.7" />
-    <PackageReference Include="Thandizo.DataModels" Version="1.0.7.2" />
+    <PackageReference Include="Thandizo.DAL" Version="1.0.1.8" />
+    <PackageReference Include="Thandizo.DataModels" Version="1.0.7.4" />
   </ItemGroup>
 
 </Project>

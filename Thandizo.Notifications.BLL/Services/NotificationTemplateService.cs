@@ -61,7 +61,7 @@ namespace Thandizo.Notifications.BLL.Services
 
             var mappedNotificationTemplate = new AutoMapperHelper<NotificationTemplateDTO, NotificationTemplates>().MapToObject(notificationTemplate);
             mappedNotificationTemplate.RowAction = "I";
-            mappedNotificationTemplate.DateCreated = DateTime.UtcNow.AddHours(2);
+            mappedNotificationTemplate.DateCreated = DateTime.UtcNow;
 
             await _context.NotificationTemplates.AddAsync(mappedNotificationTemplate);
             await _context.SaveChangesAsync();
@@ -103,7 +103,7 @@ namespace Thandizo.Notifications.BLL.Services
             notificationTemplateToUpdate.RepeatCount = notificationTemplate.RepeatCount;
             notificationTemplateToUpdate.RowAction = "U";
             notificationTemplateToUpdate.ModifiedBy = notificationTemplate.CreatedBy;
-            notificationTemplateToUpdate.DateModified = DateTime.UtcNow.AddHours(2);
+            notificationTemplateToUpdate.DateModified = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 
