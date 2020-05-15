@@ -23,9 +23,10 @@ namespace Thandizo.Notifications.BLL.Services
         private readonly thandizoContext _context;
         private readonly IBusControl _bus;
 
-        public BulkNotificationService(thandizoContext context)
+        public BulkNotificationService(thandizoContext context, IBusControl bus)
         {
             _context = context;
+            _bus = bus;
         }
 
         public async Task<OutputResponse> Get(int notificationId)
@@ -74,59 +75,199 @@ namespace Thandizo.Notifications.BLL.Services
             };
         }
 
-        public async Task<OutputResponse> Add(BulkNotificationRequest bulkNotificationRequest, string smsQueueAddress)
+        public async Task<OutputResponse> Add(BulkNotificationRequest bulkNotificationRequest, string smsQueueAddress, string emailQueueAddress)
         {
             using (TransactionScope scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
             {
-                var channel = await _context.NotificationChannels.FirstOrDefaultAsync(x => x.ChannelId.Equals(bulkNotificationRequest.ChannelId));
-
-                var phoneNumbers = await _context.Subscribers.Where(x => x.ChannelId.Equals(bulkNotificationRequest.ChannelId)).
-                        Select(x => x.PhoneNumber).ToListAsync();
-
-                if (bulkNotificationRequest.SendNow && channel.ChannelName.Equals("SMS"))
+                var allRecipients = new Dictionary<string, string>();
+                if (bulkNotificationRequest.MessageType.Equals("D"))
                 {
-                    var smsEndpoint = await _bus.GetSendEndpoint(new Uri(smsQueueAddress));
+                    if (bulkNotificationRequest.ToChannels)
+                    {
+                        var subscribers = _context.Subscribers;
+                        foreach (var subscriber in subscribers)
+                        {
+                            allRecipients.Add(subscriber.RecipientAddress, subscriber.Channel.ChannelName.ToUpper().Trim());
+                        }
+                    }
+                    if (bulkNotificationRequest.ToHealthCareWorkers)
+                    {
+                        var healthCareWorkers = _context.HealthCareWorkers.Select(x => new { x.PhoneNumber, x.EmailAddress });
+                        foreach (var healthCareWorker in healthCareWorkers)
+                        {
+                            if ((!string.IsNullOrEmpty(healthCareWorker.PhoneNumber)) && (!allRecipients.ContainsKey(healthCareWorker.PhoneNumber)))
+                            {
+                                allRecipients.Add(healthCareWorker.PhoneNumber, "SMS");
+                            }
 
-                    if (phoneNumbers.Any())
+                            if ((!string.IsNullOrEmpty(healthCareWorker.EmailAddress)) && (!allRecipients.ContainsKey(healthCareWorker.EmailAddress)))
+                            {
+                                allRecipients.Add(healthCareWorker.EmailAddress, "EMAIL");
+                            }
+
+                        }
+                    }
+                    if (bulkNotificationRequest.ToPatients)
+                    {
+                        var patients = _context.Patients.Select(x => new { x.PhoneNumber, x.EmailAddress });
+                        foreach (var patient in patients)
+                        {
+                            if ((!string.IsNullOrEmpty(patient.PhoneNumber)) && (!allRecipients.ContainsKey(patient.PhoneNumber)))
+                            {
+                                allRecipients.Add(patient.PhoneNumber, "SMS");
+                            }
+
+                            if ((!string.IsNullOrEmpty(patient.EmailAddress)) && (!allRecipients.ContainsKey(patient.EmailAddress)))
+                            {
+                                allRecipients.Add(patient.EmailAddress, "EMAIL");
+                            }
+
+                        }
+                    }
+                    if (bulkNotificationRequest.ToTeamMembers)
+                    {
+                        var teamMembers = _context.ResponseTeamMembers.Select(x => new { x.PhoneNumber, x.EmailAddress });
+                        foreach (var teamMember in teamMembers)
+                        {
+                            if ((!string.IsNullOrEmpty(teamMember.PhoneNumber)) && (!allRecipients.ContainsKey(teamMember.PhoneNumber)))
+                            {
+                                allRecipients.Add(teamMember.PhoneNumber, "SMS");
+                            }
+
+                            if ((!string.IsNullOrEmpty(teamMember.EmailAddress)) && (!allRecipients.ContainsKey(teamMember.EmailAddress)))
+                            {
+                                allRecipients.Add(teamMember.EmailAddress, "EMAIL");
+                            }
+
+                        }
+                    }
+                    if (bulkNotificationRequest.HasFileUpload)
+                    {
+
+                    }
+                }
+                else
+                {
+                    var subscribers = _context.Subscribers;
+                    foreach (var subscriber in subscribers)
+                    {
+                        allRecipients.Add(subscriber.RecipientAddress, subscriber.Channel.ChannelName.ToUpper().Trim());
+                    }
+                }
+
+                var smsRecipients = new List<string>();
+                var emailRecipients = new List<string>();
+
+                foreach (var recipient in allRecipients)
+                {
+                    switch (recipient.Value)
+                    {
+                        case "SMS":
+                            smsRecipients.Add(recipient.Key);
+                            break;
+                        case "EMAIL":
+                            emailRecipients.Add(recipient.Key);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                if (bulkNotificationRequest.SendNow)
+                {
+                    bulkNotificationRequest.SendDate = DateTime.UtcNow;
+                    var smsEndpoint = await _bus.GetSendEndpoint(new Uri(smsQueueAddress));
+                    var emailEndpoint = await _bus.GetSendEndpoint(new Uri(emailQueueAddress));
+
+                    BulkNotificationDTO bulkSmsNotification = new BulkNotificationDTO();
+                    if (smsRecipients.Any())
                     {
                         await smsEndpoint.Send(new MessageModelRequest(new MessageModel
                         {
                             SourceAddress = "Thandizo",
-                            DestinationRecipients = phoneNumbers,
+                            DestinationRecipients = smsRecipients,
                             MessageBody = bulkNotificationRequest.Message
-                        }));
+                        }));;
+
+                        bulkSmsNotification = bulkNotificationRequest;
+
+                        var channelId = await _context.NotificationChannels.Where(x => x.ChannelName.ToUpper().Equals("SMS")).Select(x => x.ChannelId).FirstOrDefaultAsync();
+                        
+                        var mappedSmsBulkNotification = new AutoMapperHelper<BulkNotificationDTO, BulkNotifications>().MapToObject(bulkSmsNotification);
+                        mappedSmsBulkNotification.RowAction = "I";
+                        mappedSmsBulkNotification.ChannelId = channelId;
+                        mappedSmsBulkNotification.DateCreated = DateTime.UtcNow;
+
+                        await _context.BulkNotifications.AddAsync(mappedSmsBulkNotification);
+                        await _context.SaveChangesAsync();
+
+                        var bulkSmsNotificationLogs = new List<BulkNotificationLog>();
+
+                        foreach (var recipient in allRecipients)
+                        {
+                            var bulkNotificationLog = new BulkNotificationLogDTO
+                            {
+                                CreatedBy = "SYS",
+                                DateCreated = DateTime.UtcNow,
+                                NotificationId = mappedSmsBulkNotification.NotificationId,
+                                PhoneNumber = recipient.Value,
+                                Status = "S"
+                            };
+
+                            var mappedBulkNotificationLog = new AutoMapperHelper<BulkNotificationLogDTO, BulkNotificationLog>().MapToObject(bulkNotificationLog);
+                            mappedBulkNotificationLog.DateCreated = DateTime.UtcNow;
+
+                            bulkSmsNotificationLogs.Add(mappedBulkNotificationLog);
+                        }
+                        await _context.BulkNotificationLog.AddRangeAsync(bulkSmsNotificationLogs);
+                        await _context.SaveChangesAsync();
                     }
-                }
 
-                BulkNotificationDTO bulkNotification = bulkNotificationRequest;
-
-                var mappedBulkNotification = new AutoMapperHelper<BulkNotificationDTO, BulkNotifications>().MapToObject(bulkNotification);
-                mappedBulkNotification.RowAction = "I";
-                mappedBulkNotification.DateCreated = DateTime.UtcNow.AddHours(2);
-
-                await _context.BulkNotifications.AddAsync(mappedBulkNotification);
-                await _context.SaveChangesAsync();
-
-                var bulkNotificationLogs = new List<BulkNotificationLog>();
-
-                foreach (string phoneNumber in phoneNumbers)
-                {
-                    var bulkNotificationLog = new BulkNotificationLogDTO
+                    if (emailRecipients.Any())
                     {
-                        CreatedBy = "SYS",
-                        DateCreated = DateTime.UtcNow.AddHours(2),
-                        NotificationId = mappedBulkNotification.NotificationId,
-                        PhoneNumber = phoneNumber,
-                        Status = "S"
-                    };
+                        await emailEndpoint.Send(new MessageModelRequest(new MessageModel
+                        {
+                            SourceAddress = "thandizo@angledimension.com",
+                            Subject = "COVID-19 Notification",
+                            DestinationRecipients = emailRecipients,
+                            MessageBody = $"Dear Sir/Madam,<br />{bulkNotificationRequest.Message}"
+                        }));
 
-                    var mappedBulkNotificationLog = new AutoMapperHelper<BulkNotificationLogDTO, BulkNotificationLog>().MapToObject(bulkNotificationLog);
-                    mappedBulkNotificationLog.DateCreated = DateTime.UtcNow.AddHours(2);
+                        BulkNotificationDTO bulkEmailNotification = bulkNotificationRequest;
 
-                    bulkNotificationLogs.Add(mappedBulkNotificationLog);
+                        var channelId = await _context.NotificationChannels.Where(x => x.ChannelName.ToUpper().Equals("EMAIL")).Select(x => x.ChannelId).FirstOrDefaultAsync();
+
+                        var mappedEmailBulkNotification = new AutoMapperHelper<BulkNotificationDTO, BulkNotifications>().MapToObject(bulkEmailNotification);
+                        mappedEmailBulkNotification.RowAction = "I";
+                        mappedEmailBulkNotification.ChannelId = channelId;
+                        mappedEmailBulkNotification.DateCreated = DateTime.UtcNow;
+
+                        await _context.BulkNotifications.AddAsync(mappedEmailBulkNotification);
+                        await _context.SaveChangesAsync();
+
+                        var bulkSmsNotificationLogs = new List<BulkNotificationLog>();
+
+                        foreach (var recipient in allRecipients)
+                        {
+                            var bulkNotificationLog = new BulkNotificationLogDTO
+                            {
+                                CreatedBy = "SYS",
+                                DateCreated = DateTime.UtcNow,
+                                NotificationId = mappedEmailBulkNotification.NotificationId,
+                                PhoneNumber = recipient.Value,
+                                Status = "S"
+                            };
+
+                            var mappedBulkNotificationLog = new AutoMapperHelper<BulkNotificationLogDTO, BulkNotificationLog>().MapToObject(bulkNotificationLog);
+                            mappedBulkNotificationLog.DateCreated = DateTime.UtcNow;
+
+                            bulkSmsNotificationLogs.Add(mappedBulkNotificationLog);
+                        }
+                        await _context.BulkNotificationLog.AddRangeAsync(bulkSmsNotificationLogs);
+                        await _context.SaveChangesAsync();
+                    }
+
                 }
-                await _context.BulkNotificationLog.AddRangeAsync(bulkNotificationLogs);
-                await _context.SaveChangesAsync();
 
                 scope.Complete();
             }
@@ -157,7 +298,7 @@ namespace Thandizo.Notifications.BLL.Services
             bulkNotificationToUpdate.SendDate = bulkNotification.SendDate;
             bulkNotificationToUpdate.RowAction = "U";
             bulkNotificationToUpdate.ModifiedBy = bulkNotification.CreatedBy;
-            bulkNotificationToUpdate.DateModified = DateTime.UtcNow.AddHours(2);
+            bulkNotificationToUpdate.DateModified = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 
