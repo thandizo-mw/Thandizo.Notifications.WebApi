@@ -61,7 +61,7 @@ namespace Thandizo.Notifications.BLL.Services
 
             var mappedBulkNotificationLog = new AutoMapperHelper<BulkNotificationLogDTO, BulkNotificationLog>().MapToObject(scheduledNotificationLog);
 
-            mappedBulkNotificationLog.DateCreated = DateTime.UtcNow.AddHours(2);
+            mappedBulkNotificationLog.DateCreated = DateTime.UtcNow;
 
             await _context.BulkNotificationLog.AddAsync(mappedBulkNotificationLog);
             await _context.SaveChangesAsync();
