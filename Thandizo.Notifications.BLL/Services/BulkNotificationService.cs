@@ -141,9 +141,15 @@ namespace Thandizo.Notifications.BLL.Services
 
                         }
                     }
-                    if (bulkNotificationRequest.HasFileUpload)
+                    if (bulkNotificationRequest.ToCustomNumbers)
                     {
-
+                        foreach (string phoneNumbers in bulkNotificationRequest.UploadedPhoneNumbers)
+                        {
+                            if ((!string.IsNullOrEmpty(phoneNumbers)) && (!allRecipients.ContainsKey(phoneNumbers)))
+                            {
+                                allRecipients.Add(phoneNumbers, "SMS");
+                            }
+                        }
                     }
                 }
                 else
@@ -187,7 +193,7 @@ namespace Thandizo.Notifications.BLL.Services
                             SourceAddress = "Thandizo",
                             DestinationRecipients = smsRecipients,
                             MessageBody = bulkNotificationRequest.Message
-                        }));;
+                        }));
 
                         bulkSmsNotification = bulkNotificationRequest;
 
