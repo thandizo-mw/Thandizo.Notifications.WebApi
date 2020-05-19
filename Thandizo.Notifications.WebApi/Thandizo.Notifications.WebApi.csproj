@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="MassTransit.RabbitMQ" Version="6.2.5" />
-    <PackageReference Include="Thandizo.DataModels" Version="1.0.7.4" />
+    <PackageReference Include="Thandizo.DataModels" Version="1.0.8.5" />
   </ItemGroup>
 
   <ItemGroup>
